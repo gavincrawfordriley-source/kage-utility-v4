@@ -75,14 +75,9 @@ class TweakCard(ctk.CTkFrame):
         locked_visual = tweak["locked"] and not unlocked
         self.locked_visual = locked_visual
 
-        if transparent_bg:
-            card_bg = "transparent"
-        else:
-            card_bg = theme["CARD_LOCKED"] if locked_visual else theme["CARD"]
-
         super().__init__(
             master,
-            fg_color=card_bg,
+            fg_color=theme["CARD_LOCKED"] if locked_visual else theme["CARD"],
             corner_radius=12,
             border_width=1,
             border_color=theme["BORDER"],
@@ -356,12 +351,7 @@ class App(ctk.CTk):
                 if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
                     bg_path = os.path.join(sys._MEIPASS, "bg.png")
             if os.path.exists(bg_path):
-                pil = Image.open(bg_path).convert("RGBA")
-                # Darken the image slightly for text readability behind see-through cards
-                darken_alpha = 130 if self._has_custom_bg else 90
-                overlay = Image.new("RGBA", pil.size, (0, 0, 0, darken_alpha))
-                pil = Image.alpha_composite(pil, overlay).convert("RGB")
-                # Cover common screen sizes with high-quality upscale
+                pil = Image.open(bg_path).convert("RGB")
                 self._bg_img = ctk.CTkImage(light_image=pil, dark_image=pil,
                                             size=(2560, 1600))
                 self._bg_label = ctk.CTkLabel(self, image=self._bg_img, text="")
@@ -549,8 +539,7 @@ class App(ctk.CTk):
             ).pack(side="right")
 
         # ---------- Info banner: how to verify tweaks ----------
-        info_bg = "transparent" if self._has_custom_bg else "#0f1a24"
-        info = ctk.CTkFrame(self, fg_color=info_bg,
+        info = ctk.CTkFrame(self, fg_color="#0f1a24",
                             corner_radius=10, border_width=1,
                             border_color=t["ACCENT_DIM"])
         info.pack(fill="x", padx=16, pady=(2, 4))
@@ -654,8 +643,7 @@ class App(ctk.CTk):
         self._home_labels = {}
 
         def make_stat_card(col, key, title, unit_suffix, ring_color):
-            card_bg = "transparent" if self._has_custom_bg else t["CARD"]
-            card = ctk.CTkFrame(wrap, fg_color=card_bg, corner_radius=14,
+            card = ctk.CTkFrame(wrap, fg_color=t["CARD"], corner_radius=14,
                                 border_width=1, border_color=t["BORDER"])
             card.grid(row=0, column=col, padx=6, pady=6, sticky="nsew")
 
@@ -686,8 +674,7 @@ class App(ctk.CTk):
         make_stat_card(2, "ram", "\U0001F4BE  RAM USAGE", "\u2014",  t["GOLD"])
 
         # Temperature Row
-        temp_bg = "transparent" if self._has_custom_bg else t["CARD"]
-        temp_row = ctk.CTkFrame(wrap, fg_color=temp_bg, corner_radius=14,
+        temp_row = ctk.CTkFrame(wrap, fg_color=t["CARD"], corner_radius=14,
                                 border_width=1, border_color=t["BORDER"])
         temp_row.grid(row=1, column=0, columnspan=3, padx=6, pady=(4, 8), sticky="ew")
         temp_row.grid_columnconfigure((0, 1), weight=1)
