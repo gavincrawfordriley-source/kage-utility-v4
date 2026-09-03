@@ -75,13 +75,23 @@ class TweakCard(ctk.CTkFrame):
         locked_visual = tweak["locked"] and not unlocked
         self.locked_visual = locked_visual
 
-        super().__init__(
-            master,
-            fg_color=theme["CARD_LOCKED"] if locked_visual else theme["CARD"],
-            corner_radius=12,
-            border_width=1,
-            border_color=theme["BORDER"],
-        )
+        # Safe transparency: fall back to solid if CTk version doesn't accept "transparent"
+        if transparent_bg:
+            card_bg = "transparent"
+        else:
+            card_bg = theme["CARD_LOCKED"] if locked_visual else theme["CARD"]
+        try:
+            super().__init__(
+                master, fg_color=card_bg, corner_radius=12,
+                border_width=1, border_color=theme["BORDER"],
+            )
+        except Exception:
+            # Fallback to solid if "transparent" not supported
+            super().__init__(
+                master,
+                fg_color=theme["CARD_LOCKED"] if locked_visual else theme["CARD"],
+                corner_radius=12, border_width=1, border_color=theme["BORDER"],
+            )
         self._build()
         self.refresh_status()
 
