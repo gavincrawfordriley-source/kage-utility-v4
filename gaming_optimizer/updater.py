@@ -22,7 +22,7 @@ from packaging.version import Version, InvalidVersion
 APP_VERSION = "1.5"
 
 REPO_OWNER = "gavincrawfordriley-source"
-REPO_NAME = "Kage-utilityv3.2"
+REPO_NAME = "kage-utility-v4"
 RELEASES_URL = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/releases/latest"
 COMMITS_URL = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/commits/main"
 SOURCE_ZIP_URL = f"https://github.com/{REPO_OWNER}/{REPO_NAME}/archive/refs/heads/main.zip"
