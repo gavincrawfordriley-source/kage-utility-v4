@@ -1050,7 +1050,7 @@ def _wifi_pwr_status():
 
 _add("p_wifi_no_powersave", "Disable WiFi Power Saving",
      "Stops Windows from suspending your WiFi adapter \u2014 the #1 fix for ping spikes on wireless.",
-     "\U0001F4F6", "Partner Exclusive", LOCKED,
+     "\U0001F4F6", "Wireless Network", LOCKED,
      _wifi_pwr_apply, _wifi_pwr_restore, _wifi_pwr_status, partner_only=True)
 
 
@@ -1067,7 +1067,7 @@ def _wifi_5ghz_status():
 
 _add("p_wifi_prefer_5ghz", "Force WiFi 5GHz Band",
      "Locks your WiFi to the 5GHz band \u2014 much lower latency + less interference than 2.4GHz.",
-     "\U0001F4F6", "Partner Exclusive", LOCKED,
+     "\U0001F4F6", "Wireless Network", LOCKED,
      _wifi_5ghz_apply, _wifi_5ghz_restore, _wifi_5ghz_status, partner_only=True)
 
 
@@ -1101,7 +1101,7 @@ def _int_mod_status():
 
 _add("p_no_int_moderation", "Disable Interrupt Moderation",
      "NIC delivers packets to CPU instantly instead of batching \u2014 lower ping, more CPU cost.",
-     "\U0001F4E1", "Partner Exclusive", LOCKED,
+     "\U0001F4E1", "Wired Network", LOCKED,
      _int_mod_apply, _int_mod_restore, _int_mod_status, partner_only=True)
 
 
@@ -1128,11 +1128,118 @@ def _wifi_autoscan_status():
 
 _add("p_wifi_no_bgscan", "Stop WiFi Background Scans",
      "Prevents Windows from scanning for new WiFi networks mid-game \u2014 removes periodic ping spikes.",
-     "\U0001F507", "Partner Exclusive", LOCKED,
+     "\U0001F507", "Wireless Network", LOCKED,
      _wifi_autoscan_apply, _wifi_autoscan_restore, _wifi_autoscan_status, partner_only=True)
 
 
+# ============================================================
+# WIRED NETWORK — 5 more Ethernet-specific tweaks
+# ============================================================
+def _eth_prop_apply(display_name, value):
+    return _ps(f"Get-NetAdapter -Physical | Where-Object {{ $_.MediaType -eq '802.3' }} | ForEach-Object {{ Set-NetAdapterAdvancedProperty -Name $_.Name -DisplayName '{display_name}' -DisplayValue '{value}' -ErrorAction SilentlyContinue }}")
+
+def _eth_prop_status(display_name, expected_substr):
+    ok, out = _run(f'powershell -NoProfile -Command "(Get-NetAdapter -Physical | Where-Object {{ $_.MediaType -eq \'802.3\' }} | Select-Object -First 1 | Get-NetAdapterAdvancedProperty -DisplayName \'{display_name}\' -ErrorAction SilentlyContinue).DisplayValue"')
+    return "on" if expected_substr.lower() in (out or "").lower() else "off"
+
+_add("p_eth_eee_off", "Disable Energy-Efficient Ethernet (EEE)",
+     "Kills 'Green Ethernet' \u2014 removes the biggest latency source on gigabit Ethernet.",
+     "\U0001F50C", "Wired Network", LOCKED,
+     lambda: _eth_prop_apply("Energy-Efficient Ethernet", "Disabled") or _eth_prop_apply("EEE", "Disabled") or True,
+     lambda: _eth_prop_apply("Energy-Efficient Ethernet", "Enabled") or _eth_prop_apply("EEE", "Enabled") or True,
+     lambda: _eth_prop_status("Energy-Efficient Ethernet", "disable"),
+     partner_only=True)
+
+_add("p_eth_flow_off", "Disable Ethernet Flow Control",
+     "Stops the NIC from pausing traffic \u2014 gives you every packet the second it arrives.",
+     "\U0001F30A", "Wired Network", LOCKED,
+     lambda: _eth_prop_apply("Flow Control", "Disabled") or True,
+     lambda: _eth_prop_apply("Flow Control", "Rx & Tx Enabled") or True,
+     lambda: _eth_prop_status("Flow Control", "disable"),
+     partner_only=True)
+
+_add("p_eth_lso_off", "Disable Large Send Offload (LSO)",
+     "Prevents NIC from batching outbound packets \u2014 reduces send latency.",
+     "\U0001F4E4", "Wired Network", LOCKED,
+     lambda: (_eth_prop_apply("Large Send Offload V2 (IPv4)", "Disabled"),
+              _eth_prop_apply("Large Send Offload V2 (IPv6)", "Disabled"), True)[2],
+     lambda: (_eth_prop_apply("Large Send Offload V2 (IPv4)", "Enabled"),
+              _eth_prop_apply("Large Send Offload V2 (IPv6)", "Enabled"), True)[2],
+     lambda: _eth_prop_status("Large Send Offload V2 (IPv4)", "disable"),
+     partner_only=True)
+
+_add("p_eth_no_wake", "Disable Wake-on-Magic-Packet",
+     "Kills WoL magic packet listening \u2014 reduces NIC overhead when you're not using it.",
+     "\U0001F6CC", "Wired Network", LOCKED,
+     lambda: _ps("Get-NetAdapter -Physical | Where-Object { $_.MediaType -eq '802.3' } | ForEach-Object { Disable-NetAdapterPowerManagement -Name $_.Name -WakeOnMagicPacket -ErrorAction SilentlyContinue }"),
+     lambda: _ps("Get-NetAdapter -Physical | Where-Object { $_.MediaType -eq '802.3' } | ForEach-Object { Enable-NetAdapterPowerManagement -Name $_.Name -WakeOnMagicPacket -ErrorAction SilentlyContinue }"),
+     lambda: "on" if "false" in (_run('powershell -NoProfile -Command "(Get-NetAdapter -Physical | Where-Object { $_.MediaType -eq \'802.3\' } | Select-Object -First 1 | Get-NetAdapterPowerManagement).WakeOnMagicPacket"')[1] or "").lower() else "off",
+     partner_only=True)
+
+_add("p_eth_checksum_off", "Disable TCP/UDP Checksum Offload",
+     "CPU verifies packet integrity instead of the NIC \u2014 tiny CPU cost, faster packet delivery.",
+     "\u2713", "Wired Network", LOCKED,
+     lambda: (_eth_prop_apply("TCP Checksum Offload (IPv4)", "Disabled"),
+              _eth_prop_apply("UDP Checksum Offload (IPv4)", "Disabled"), True)[2],
+     lambda: (_eth_prop_apply("TCP Checksum Offload (IPv4)", "Rx & Tx Enabled"),
+              _eth_prop_apply("UDP Checksum Offload (IPv4)", "Rx & Tx Enabled"), True)[2],
+     lambda: _eth_prop_status("TCP Checksum Offload (IPv4)", "disable"),
+     partner_only=True)
+
+
+# ============================================================
+# WIRELESS NETWORK — 5 more WiFi-specific tweaks
+# ============================================================
+def _wifi_prop_apply(display_name, value):
+    return _ps(f"Get-NetAdapter -Physical | Where-Object {{ $_.MediaType -eq '802.11' }} | ForEach-Object {{ Set-NetAdapterAdvancedProperty -Name $_.Name -DisplayName '{display_name}' -DisplayValue '{value}' -ErrorAction SilentlyContinue }}")
+
+def _wifi_prop_status(display_name, expected_substr):
+    ok, out = _run(f'powershell -NoProfile -Command "(Get-NetAdapter -Physical | Where-Object {{ $_.MediaType -eq \'802.11\' }} | Select-Object -First 1 | Get-NetAdapterAdvancedProperty -DisplayName \'{display_name}\' -ErrorAction SilentlyContinue).DisplayValue"')
+    return "on" if expected_substr.lower() in (out or "").lower() else "off"
+
+_add("p_wifi_roam_low", "Lowest WiFi Roaming Aggressiveness",
+     "Stops your PC from jumping to weaker access points mid-game \u2014 sticks to your strong signal.",
+     "\U0001F4CD", "Wireless Network", LOCKED,
+     lambda: _wifi_prop_apply("Roaming Aggressiveness", "1. Lowest"),
+     lambda: _wifi_prop_apply("Roaming Aggressiveness", "3. Medium"),
+     lambda: _wifi_prop_status("Roaming Aggressiveness", "lowest"),
+     partner_only=True)
+
+_add("p_wifi_tx_max", "Max WiFi Transmit Power",
+     "Cranks your WiFi radio to full power \u2014 stronger signal, faster response to router.",
+     "\U0001F4E1", "Wireless Network", LOCKED,
+     lambda: _wifi_prop_apply("Transmit Power", "5. Highest"),
+     lambda: _wifi_prop_apply("Transmit Power", "3. Medium"),
+     lambda: _wifi_prop_status("Transmit Power", "highest"),
+     partner_only=True)
+
+_add("p_wifi_wmm_on", "Enable WiFi WMM QoS",
+     "Turns on WiFi Multimedia QoS \u2014 gaming packets get priority over other WiFi traffic.",
+     "\U0001F3AF", "Wireless Network", LOCKED,
+     lambda: _wifi_prop_apply("WMM", "Enabled"),
+     lambda: _wifi_prop_apply("WMM", "Disabled"),
+     lambda: _wifi_prop_status("WMM", "enable"),
+     partner_only=True)
+
+_add("p_wifi_ch_wide", "Force 40MHz WiFi Channel Width",
+     "Uses double-wide 802.11n channels for higher throughput and lower packet queuing delay.",
+     "\U0001F4F6", "Wireless Network", LOCKED,
+     lambda: _wifi_prop_apply("Channel Width for 5GHz", "Auto"),
+     lambda: _wifi_prop_apply("Channel Width for 5GHz", "20MHz Only"),
+     lambda: _wifi_prop_status("Channel Width for 5GHz", "auto"),
+     partner_only=True)
+
+_add("p_wifi_short_preamble", "Force Short WiFi Preamble",
+     "Uses short preamble headers on WiFi frames \u2014 marginally lower per-packet latency.",
+     "\u26A1", "Wireless Network", LOCKED,
+     lambda: _wifi_prop_apply("Preamble Mode", "Short"),
+     lambda: _wifi_prop_apply("Preamble Mode", "Long"),
+     lambda: _wifi_prop_status("Preamble Mode", "short"),
+     partner_only=True)
+
+
 TWEAKS = _defs
-CATEGORIES = ["CPU & Power", "Network", "GPU / DirectX", "Input", "System",
+CATEGORIES = ["CPU & Power", "Network", "Wired Network", "Wireless Network",
+              "GPU / DirectX", "Input", "System",
               "Gaming", "Visuals", "Startup", "Disk", "Privacy", "Audio",
               "Partner Exclusive"]
