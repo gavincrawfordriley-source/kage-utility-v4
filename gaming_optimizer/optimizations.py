@@ -952,6 +952,76 @@ _add_reg("p_kill_gamedvr_deep", "Kill Game DVR Completely",
      admin=False, partner_only=True)
 
 
+# ============================================================
+# PARTNER EXCLUSIVE — 10 more safe registry tweaks
+# ============================================================
+_add_reg("p_aero_peek_off", "Disable Aero Peek",
+     "Kills the taskbar hover preview \u2014 removes DWM CPU cost on hover.",
+     "\U0001F441", "Partner Exclusive", LOCKED,
+     [{"hive": "HKCU", "path": r"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "name": "DisablePreviewDesktop", "on": 1, "off": 0}],
+     admin=False, partner_only=True)
+
+_add_reg("p_cortana_off", "Disable Cortana Registry",
+     "Fully disables Cortana at the policy level \u2014 no more background indexing.",
+     "\U0001F507", "Partner Exclusive", LOCKED,
+     [{"hive": "HKLM", "path": r"SOFTWARE\Policies\Microsoft\Windows\Windows Search", "name": "AllowCortana", "on": 0, "off": 1},
+      {"hive": "HKLM", "path": r"SOFTWARE\Policies\Microsoft\Windows\Windows Search", "name": "DisableWebSearch", "on": 1, "off": 0}],
+     partner_only=True)
+
+_add_reg("p_bing_search_off", "Kill Bing in Start Menu",
+     "Removes web results from the Start menu search \u2014 makes it feel instant.",
+     "\U0001F50D", "Partner Exclusive", LOCKED,
+     [{"hive": "HKCU", "path": r"Software\Microsoft\Windows\CurrentVersion\Search", "name": "BingSearchEnabled", "on": 0, "off": 1},
+      {"hive": "HKCU", "path": r"Software\Policies\Microsoft\Windows\Explorer", "name": "DisableSearchBoxSuggestions", "on": 1, "off": 0}],
+     admin=False, partner_only=True)
+
+_add_reg("p_onedrive_off", "Kill OneDrive Auto-Start",
+     "Stops OneDrive from launching on boot \u2014 saves RAM and background CPU.",
+     "\u2601", "Partner Exclusive", LOCKED,
+     [{"hive": "HKLM", "path": r"SOFTWARE\Policies\Microsoft\Windows\OneDrive", "name": "DisableFileSyncNGSC", "on": 1, "off": 0},
+      {"hive": "HKCU", "path": r"Software\Microsoft\Windows\CurrentVersion\Run", "name": "OneDrive", "on": "", "off": "", "typ": winreg.REG_SZ if winreg else None}],
+     partner_only=True)
+
+_add_reg("p_store_autoinstall_off", "Kill Store Auto-Install Bloat",
+     "Prevents Microsoft Store from silently reinstalling promoted apps.",
+     "\U0001F6AB", "Partner Exclusive", LOCKED,
+     [{"hive": "HKLM", "path": r"SOFTWARE\Policies\Microsoft\Windows\CloudContent", "name": "DisableWindowsConsumerFeatures", "on": 1, "off": 0},
+      {"hive": "HKCU", "path": r"Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager", "name": "SilentInstalledAppsEnabled", "on": 0, "off": 1},
+      {"hive": "HKCU", "path": r"Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager", "name": "SubscribedContent-338388Enabled", "on": 0, "off": 1}],
+     partner_only=True)
+
+_add_reg("p_fast_startup_off", "Disable Fast Startup",
+     "Turns off hybrid boot \u2014 cleaner state on every start, no half-hibernation quirks.",
+     "\u26A1", "Partner Exclusive", LOCKED,
+     [{"hive": "HKLM", "path": r"SYSTEM\CurrentControlSet\Control\Session Manager\Power", "name": "HiberbootEnabled", "on": 0, "off": 1}],
+     partner_only=True)
+
+_add_reg("p_reserved_storage_off", "Disable Windows Reserved Storage",
+     "Frees the 7GB Windows reserves for updates \u2014 more free space for games.",
+     "\U0001F4BE", "Partner Exclusive", LOCKED,
+     [{"hive": "HKLM", "path": r"SOFTWARE\Microsoft\Windows\CurrentVersion\ReserveManager", "name": "ShippedWithReserves", "on": 0, "off": 1},
+      {"hive": "HKLM", "path": r"SOFTWARE\Microsoft\Windows\CurrentVersion\ReserveManager", "name": "BaseHardReserveSize", "on": 0}],
+     partner_only=True)
+
+_add_reg("p_autoreboot_updates_off", "No Auto-Reboot After Windows Updates",
+     "Stops Windows from randomly rebooting your PC while you're away.",
+     "\U0001F510", "Partner Exclusive", LOCKED,
+     [{"hive": "HKLM", "path": r"SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU", "name": "NoAutoRebootWithLoggedOnUsers", "on": 1, "off": 0}],
+     partner_only=True)
+
+_add_reg("p_win11_context_menu_classic", "Windows 11 Classic Right-Click Menu",
+     "Restores the fast Windows 10-style right-click menu \u2014 no more 'Show more options'.",
+     "\U0001F5B1", "Partner Exclusive", LOCKED,
+     [{"hive": "HKCU", "path": r"Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32", "name": "", "on": "", "typ": winreg.REG_SZ if winreg else None}],
+     admin=False, partner_only=True)
+
+_add_reg("p_taskbar_end_task", "Enable 'End Task' on Taskbar",
+     "Adds End Task directly to the taskbar right-click menu \u2014 kill frozen games instantly.",
+     "\U0001F480", "Partner Exclusive", LOCKED,
+     [{"hive": "HKCU", "path": r"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDeveloperSettings", "name": "TaskbarEndTask", "on": 1, "off": 0}],
+     admin=False, partner_only=True)
+
+
 TWEAKS = _defs
 CATEGORIES = ["CPU & Power", "Network", "GPU / DirectX", "Input", "System",
               "Gaming", "Visuals", "Startup", "Disk", "Privacy", "Audio",
