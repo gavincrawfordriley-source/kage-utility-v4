@@ -1,0 +1,20 @@
+# Build artifacts — never commit these to the repo
+dist/
+build/
+*.spec
+*.pyc
+__pycache__/
+
+# Runtime state (not for sharing)
+license.json
+owner_config.json
+history.json
+settings.json
+custom_bg_*
+
+# Icons and audio are generated at build time by generate_icon.py / sound.py
+icon.ico
+icon.png
+bg.png
+whoosh.wav
+voice.wav
