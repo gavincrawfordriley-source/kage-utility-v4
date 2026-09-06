@@ -144,31 +144,42 @@ def install_new_exe(remote_url: str, progress_cb=None) -> tuple[bool, str]:
         return False, "Download failed."
 
     # Batch script: wait for current process to release the exe, then swap.
+    # Runs completely hidden via wmic (no visible cmd windows during wait loop).
     bat = f"""@echo off
 setlocal
-REM Wait for the currently-running KageUtility to close
+REM Wait for the currently-running KageUtility to close (silent loop)
 :wait
-timeout /t 1 /nobreak >nul
-tasklist /FI "IMAGENAME eq {current_exe.name}" 2>nul | find /I "{current_exe.name}" >nul
+timeout /t 1 /nobreak >nul 2>&1
+tasklist /FI "IMAGENAME eq {current_exe.name}" /NH 2>nul | findstr /I "{current_exe.name}" >nul 2>&1
 if not errorlevel 1 goto wait
+REM Extra safety wait so Windows fully releases the file handle
+timeout /t 2 /nobreak >nul 2>&1
 REM Swap
-del /F /Q "{current_exe}"
-ren "{new_exe}" "{current_exe.name}"
+del /F /Q "{current_exe}" >nul 2>&1
+ren "{new_exe}" "{current_exe.name}" >nul 2>&1
 REM Relaunch
 start "" "{current_exe}"
 REM Clean up self
-del /F /Q "%~f0"
+(goto) 2>nul & del /F /Q "%~f0"
 """
     try:
         swap_bat.write_text(bat, encoding="utf-8")
     except Exception as e:
         return False, f"Couldn't write swap script: {e}"
 
-    # Launch the swap script detached — it will wait for us to exit
+    # Launch the swap script completely hidden — no visible window
     try:
         import subprocess
+        # Use vbs invisible launcher for zero-flash execution
+        vbs_content = (
+            f'CreateObject("Wscript.Shell").Run '
+            f'"""{swap_bat}""", 0, False'
+        )
+        vbs_path = install_dir / "kage_swap_launcher.vbs"
+        vbs_path.write_text(vbs_content, encoding="utf-8")
         subprocess.Popen(
-            ["cmd.exe", "/C", str(swap_bat)],
+            ["wscript.exe", str(vbs_path)],
+            stdin=subprocess.DEVNULL,
             close_fds=True,
             creationflags=subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS,
         )
