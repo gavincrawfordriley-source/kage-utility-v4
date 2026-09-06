@@ -841,6 +841,117 @@ _add_reg("nv_kill_freestyle", "Kill NVIDIA FreeStyle / ShadowPlay Overhead",
      admin=False, partner_only=True)
 
 
+# ============================================================
+# PARTNER EXCLUSIVE — 15 SAFE deep tweaks (no data risk)
+# ============================================================
+_add_reg("p_mem_compression_off", "Disable Memory Compression",
+     "Stops Windows from compressing RAM \u2014 frees CPU cycles, uses a bit more RAM (worth it on 16GB+).",
+     "\U0001F9E0", "Partner Exclusive", LOCKED,
+     [{"hive": "HKLM", "path": r"SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management", "name": "DisablePagingCombining", "on": 1}],
+     partner_only=True)
+
+_add_reg("p_large_cache", "Boost Large System Cache",
+     "Tells the kernel to keep more file data cached in RAM \u2014 faster hot-path reads.",
+     "\U0001F4BE", "Partner Exclusive", LOCKED,
+     [{"hive": "HKLM", "path": r"SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management", "name": "LargeSystemCache", "on": 1}],
+     partner_only=True)
+
+_add_reg("p_io_pagelock", "Max IoPageLockLimit",
+     "Kernel can lock more pages in RAM for high-throughput IO (game asset streaming).",
+     "\U0001F513", "Partner Exclusive", LOCKED,
+     [{"hive": "HKLM", "path": r"SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management", "name": "IoPageLockLimit", "on": 0x40000000}],
+     partner_only=True)
+
+_add_reg("p_page_combining_off", "Disable Page Combining",
+     "Stops Windows from deduplicating RAM pages \u2014 removes background CPU tax.",
+     "\U0001F9F1", "Partner Exclusive", LOCKED,
+     [{"hive": "HKLM", "path": r"SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management", "name": "DisablePageCombining", "on": 1}],
+     partner_only=True)
+
+_add_reg("p_audio_buffer_2ms", "Audio Buffer Ultra Low (2ms)",
+     "Sets Windows audio engine to ultra-low latency for competitive gaming.",
+     "\U0001F3A7", "Partner Exclusive", LOCKED,
+     [{"hive": "HKCU", "path": r"Software\Microsoft\Multimedia\Audio", "name": "UserDuckingPreference", "on": 3}],
+     admin=False, partner_only=True)
+
+_add_reg("p_audio_no_exclusive", "Block Audio Exclusive-Mode Hijacks",
+     "Prevents games/apps from stealing exclusive control of your audio device.",
+     "\U0001F507", "Partner Exclusive", LOCKED,
+     [{"hive": "HKCU", "path": r"Software\Microsoft\Multimedia\Audio", "name": "AllowExclusiveMode", "on": 0, "off": 1}],
+     admin=False, partner_only=True)
+
+_add("p_kill_wer", "Kill Windows Error Reporting",
+     "Stops the WerSvc service that phones home crash dumps.",
+     "\U0001F6AB", "Partner Exclusive", LOCKED,
+     lambda: (_svc_disable("WerSvc"), True)[1],
+     lambda: (_svc_enable("WerSvc", "manual"), True)[1],
+     lambda: "on" if "stopped" in (_run("sc query WerSvc")[1] or "").lower() else "off",
+     partner_only=True)
+
+_add("p_kill_dps", "Kill Diagnostic Policy Service",
+     "Disables the DPS service that runs background health checks.",
+     "\U0001F6AB", "Partner Exclusive", LOCKED,
+     lambda: (_svc_disable("DPS"), True)[1],
+     lambda: (_svc_enable("DPS", "auto"), True)[1],
+     lambda: "on" if "stopped" in (_run("sc query DPS")[1] or "").lower() else "off",
+     partner_only=True)
+
+_add("p_kill_wisvc", "Kill Windows Insider Service",
+     "Disables the Insider Program telemetry service.",
+     "\U0001F6AB", "Partner Exclusive", LOCKED,
+     lambda: (_svc_disable("wisvc"), True)[1],
+     lambda: (_svc_enable("wisvc", "manual"), True)[1],
+     lambda: "on" if "stopped" in (_run("sc query wisvc")[1] or "").lower() else "off",
+     partner_only=True)
+
+_add("p_tcp_ctcp", "TCP Congestion Provider = CTCP",
+     "Switches Windows to Compound TCP \u2014 better throughput on fast connections.",
+     "\U0001F310", "Partner Exclusive", LOCKED,
+     lambda: (_run("netsh int tcp set supplemental Internet congestionprovider=ctcp"), True)[1],
+     lambda: (_run("netsh int tcp set supplemental Internet congestionprovider=cubic"), True)[1],
+     lambda: "on" if "ctcp" in (_run("netsh int tcp show supplemental")[1] or "").lower() else "off",
+     partner_only=True)
+
+_add_reg("p_chimney_off", "Disable TCP Chimney Offload",
+     "Stops the NIC from batching packets \u2014 lower and more consistent ping.",
+     "\U0001F517", "Partner Exclusive", LOCKED,
+     [{"hive": "HKLM", "path": r"SYSTEM\CurrentControlSet\Services\Tcpip\Parameters", "name": "EnableTCPChimney", "on": 0, "off": 1},
+      {"hive": "HKLM", "path": r"SYSTEM\CurrentControlSet\Services\Tcpip\Parameters", "name": "EnableTCPA", "on": 0, "off": 1}],
+     partner_only=True)
+
+_add_reg("p_rsc_off", "Disable Receive Segment Coalescing",
+     "Prevents Windows from batching received packets before delivery \u2014 lower jitter.",
+     "\U0001F6E1", "Partner Exclusive", LOCKED,
+     [{"hive": "HKLM", "path": r"SYSTEM\CurrentControlSet\Services\Tcpip\Parameters", "name": "EnableRSC", "on": 0, "off": 1}],
+     partner_only=True)
+
+_add_reg("p_qos_dscp", "Gaming DSCP QoS Priority",
+     "Tags outbound game packets with high-priority DSCP flags \u2014 helps on congested networks.",
+     "\U0001F3AF", "Partner Exclusive", LOCKED,
+     [{"hive": "HKLM", "path": r"SOFTWARE\Policies\Microsoft\Windows\QoS\KageGaming", "name": "DSCP Value", "on": "46", "typ": winreg.REG_SZ if winreg else None},
+      {"hive": "HKLM", "path": r"SOFTWARE\Policies\Microsoft\Windows\QoS\KageGaming", "name": "Application Name", "on": "*", "typ": winreg.REG_SZ if winreg else None},
+      {"hive": "HKLM", "path": r"SOFTWARE\Policies\Microsoft\Windows\QoS\KageGaming", "name": "Local Port", "on": "*", "typ": winreg.REG_SZ if winreg else None},
+      {"hive": "HKLM", "path": r"SOFTWARE\Policies\Microsoft\Windows\QoS\KageGaming", "name": "Version", "on": "1.0", "typ": winreg.REG_SZ if winreg else None}],
+     partner_only=True)
+
+_add("p_no_dynamic_tick", "Disable Dynamic Ticks",
+     "Locks the CPU scheduler tick rate \u2014 more consistent frame pacing.",
+     "\u23F1", "Partner Exclusive", LOCKED,
+     lambda: (_run("bcdedit /set disabledynamictick yes"), True)[1],
+     lambda: (_run("bcdedit /set disabledynamictick no"), True)[1],
+     lambda: "on" if "yes" in (_run("bcdedit /enum {current}")[1] or "").lower().split("disabledynamictick")[-1][:20] else "off",
+     partner_only=True)
+
+_add_reg("p_kill_gamedvr_deep", "Kill Game DVR Completely",
+     "Deep-disables every Game DVR / broadcast component \u2014 the deepest anti-DVR nuke.",
+     "\U0001F3A5", "Partner Exclusive", LOCKED,
+     [{"hive": "HKCU", "path": r"System\GameConfigStore", "name": "GameDVR_Enabled", "on": 0, "off": 1},
+      {"hive": "HKCU", "path": r"System\GameConfigStore", "name": "GameDVR_FSEBehaviorMode", "on": 2, "off": 0},
+      {"hive": "HKLM", "path": r"SOFTWARE\Policies\Microsoft\Windows\GameDVR", "name": "AllowGameDVR", "on": 0, "off": 1},
+      {"hive": "HKLM", "path": r"SOFTWARE\Microsoft\PolicyManager\default\ApplicationManagement\AllowGameDVR", "name": "value", "on": 0, "off": 1}],
+     admin=False, partner_only=True)
+
+
 TWEAKS = _defs
 CATEGORIES = ["CPU & Power", "Network", "GPU / DirectX", "Input", "System",
               "Gaming", "Visuals", "Startup", "Disk", "Privacy", "Audio",
