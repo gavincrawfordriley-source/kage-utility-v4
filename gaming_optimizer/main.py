@@ -31,7 +31,7 @@ from voice import play_intro
 import startup as autostart
 
 APP_NAME = "Kage Utility"
-APP_VER = "1.5"
+APP_VER = "1.8"
 
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("dark-blue")
@@ -1001,20 +1001,49 @@ class App(ctk.CTk):
     def _on_update_available(self, info):
         # Called from a background thread — marshal to Tk main thread
         def show():
+            has_exe = bool(info.get("exe_asset_url"))
             msg = (
                 f"Kage Utility {info['version']} is available "
                 f"(you're on {updater.APP_VERSION}).\n\n"
-                f"{info.get('notes', '')[:300] or 'Open the release page for details.'}\n\n"
-                "Open the download page now?"
+                f"{info.get('notes', '')[:300] or 'New tweaks and fixes inside.'}\n\n"
             )
-            if messagebox.askyesno("Update available", msg):
-                try:
-                    import webbrowser
-                    webbrowser.open(info["url"])
-                except Exception:
-                    pass
+            if has_exe:
+                msg += "Download and install now? (App will restart automatically.)"
+                if not messagebox.askyesno("Update available", msg):
+                    return
+                self._start_auto_install(info)
+            else:
+                msg += "Open the download page?"
+                if messagebox.askyesno("Update available", msg):
+                    try:
+                        import webbrowser
+                        webbrowser.open(info["url"])
+                    except Exception:
+                        pass
 
         self.after(600, show)
+
+    def _start_auto_install(self, info):
+        """One-click update from the startup toast."""
+        self.set_status(f"Downloading v{info['version']}\u2026", self.theme["ACCENT"])
+
+        def worker():
+            ok, msg = updater.install_new_exe(info["exe_asset_url"])
+            def done():
+                self.set_status(msg, self.theme["ACCENT"] if ok else self.theme["DANGER"])
+                if ok:
+                    # Give the swap script time to attach then exit
+                    self.after(2500, self._quit_for_update)
+            self.after(0, done)
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _quit_for_update(self):
+        try:
+            self.destroy()
+        except Exception:
+            import sys as _sys
+            _sys.exit(0)
 
     def _check_platform(self):
         if platform.system() != "Windows":

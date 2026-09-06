@@ -19,7 +19,7 @@ import urllib.request
 from pathlib import Path
 from packaging.version import Version, InvalidVersion
 
-APP_VERSION = "1.5"
+APP_VERSION = "1.8"
 
 REPO_OWNER = "gavincrawfordriley-source"
 REPO_NAME = "kage-utility-v4"
