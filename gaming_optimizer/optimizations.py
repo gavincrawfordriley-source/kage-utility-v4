@@ -1022,6 +1022,116 @@ _add_reg("p_taskbar_end_task", "Enable 'End Task' on Taskbar",
      admin=False, partner_only=True)
 
 
+# ============================================================
+# PARTNER EXCLUSIVE — 6 WiFi & Network ping-reduction tweaks
+# ============================================================
+def _ps(cmd):
+    """Run a PowerShell one-liner silently. Returns True if returncode=0."""
+    return _run(f'powershell -NoProfile -Command "{cmd}"')[0]
+
+
+# 1) Disable WiFi power saving on ALL wireless adapters (biggest ping win)
+def _wifi_pwr_apply():
+    _ps("Get-NetAdapter -Physical | Where-Object { $_.MediaType -eq '802.11' } | ForEach-Object { Set-NetAdapterPowerManagement -Name $_.Name -AllowComputerToTurnOffDevice Disabled -ErrorAction SilentlyContinue }")
+    _run("powercfg /setacvalueindex scheme_current 19cbb8fa-5279-450e-9fac-8a3d5fedd0c1 12bbebe6-58d6-4636-95bb-3217ef867c1a 0")
+    _run("powercfg /setdcvalueindex scheme_current 19cbb8fa-5279-450e-9fac-8a3d5fedd0c1 12bbebe6-58d6-4636-95bb-3217ef867c1a 0")
+    _run("powercfg /setactive scheme_current")
+    return True
+
+def _wifi_pwr_restore():
+    _ps("Get-NetAdapter -Physical | Where-Object { $_.MediaType -eq '802.11' } | ForEach-Object { Set-NetAdapterPowerManagement -Name $_.Name -AllowComputerToTurnOffDevice Enabled -ErrorAction SilentlyContinue }")
+    _run("powercfg /setacvalueindex scheme_current 19cbb8fa-5279-450e-9fac-8a3d5fedd0c1 12bbebe6-58d6-4636-95bb-3217ef867c1a 3")
+    _run("powercfg /setactive scheme_current")
+    return True
+
+def _wifi_pwr_status():
+    ok, out = _run('powercfg /query scheme_current 19cbb8fa-5279-450e-9fac-8a3d5fedd0c1 12bbebe6-58d6-4636-95bb-3217ef867c1a')
+    return "on" if "0x00000000" in out.lower() else "off"
+
+_add("p_wifi_no_powersave", "Disable WiFi Power Saving",
+     "Stops Windows from suspending your WiFi adapter \u2014 the #1 fix for ping spikes on wireless.",
+     "\U0001F4F6", "Partner Exclusive", LOCKED,
+     _wifi_pwr_apply, _wifi_pwr_restore, _wifi_pwr_status, partner_only=True)
+
+
+# 2) Prefer 5GHz over 2.4GHz (lower latency band)
+def _wifi_5ghz_apply():
+    return _ps("Get-NetAdapter -Physical | Where-Object { $_.MediaType -eq '802.11' } | ForEach-Object { Set-NetAdapterAdvancedProperty -Name $_.Name -DisplayName 'Preferred Band' -DisplayValue '5GHz' -ErrorAction SilentlyContinue; Set-NetAdapterAdvancedProperty -Name $_.Name -DisplayName 'Band' -DisplayValue '5GHz' -ErrorAction SilentlyContinue }")
+
+def _wifi_5ghz_restore():
+    return _ps("Get-NetAdapter -Physical | Where-Object { $_.MediaType -eq '802.11' } | ForEach-Object { Set-NetAdapterAdvancedProperty -Name $_.Name -DisplayName 'Preferred Band' -DisplayValue 'No Preference' -ErrorAction SilentlyContinue }")
+
+def _wifi_5ghz_status():
+    ok, out = _run('powershell -NoProfile -Command "Get-NetAdapter -Physical | Where-Object { $_.MediaType -eq \'802.11\' } | Get-NetAdapterAdvancedProperty -DisplayName \'Preferred Band\' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty DisplayValue"')
+    return "on" if "5" in (out or "") else "off"
+
+_add("p_wifi_prefer_5ghz", "Force WiFi 5GHz Band",
+     "Locks your WiFi to the 5GHz band \u2014 much lower latency + less interference than 2.4GHz.",
+     "\U0001F4F6", "Partner Exclusive", LOCKED,
+     _wifi_5ghz_apply, _wifi_5ghz_restore, _wifi_5ghz_status, partner_only=True)
+
+
+# 3) Disable NIC power saving on ALL adapters (Ethernet + WiFi)
+def _nic_pwr_apply():
+    return _ps("Get-NetAdapter -Physical | ForEach-Object { Set-NetAdapterPowerManagement -Name $_.Name -AllowComputerToTurnOffDevice Disabled -ErrorAction SilentlyContinue }")
+
+def _nic_pwr_restore():
+    return _ps("Get-NetAdapter -Physical | ForEach-Object { Set-NetAdapterPowerManagement -Name $_.Name -AllowComputerToTurnOffDevice Enabled -ErrorAction SilentlyContinue }")
+
+def _nic_pwr_status():
+    ok, out = _run('powershell -NoProfile -Command "(Get-NetAdapter -Physical | Select-Object -First 1 | Get-NetAdapterPowerManagement).AllowComputerToTurnOffDevice"')
+    return "on" if "disable" in (out or "").lower() else "off"
+
+_add("p_nic_no_powersave", "Disable All NIC Power Saving",
+     "Windows can NEVER sleep any network adapter \u2014 no dropouts, no lag spikes.",
+     "\U0001F50C", "Partner Exclusive", LOCKED,
+     _nic_pwr_apply, _nic_pwr_restore, _nic_pwr_status, partner_only=True)
+
+
+# 4) Disable Interrupt Moderation (NIC processes packets immediately)
+def _int_mod_apply():
+    return _ps("Get-NetAdapter -Physical | ForEach-Object { Set-NetAdapterAdvancedProperty -Name $_.Name -DisplayName 'Interrupt Moderation' -DisplayValue 'Disabled' -ErrorAction SilentlyContinue }")
+
+def _int_mod_restore():
+    return _ps("Get-NetAdapter -Physical | ForEach-Object { Set-NetAdapterAdvancedProperty -Name $_.Name -DisplayName 'Interrupt Moderation' -DisplayValue 'Enabled' -ErrorAction SilentlyContinue }")
+
+def _int_mod_status():
+    ok, out = _run('powershell -NoProfile -Command "(Get-NetAdapter -Physical | Select-Object -First 1 | Get-NetAdapterAdvancedProperty -DisplayName \'Interrupt Moderation\' -ErrorAction SilentlyContinue).DisplayValue"')
+    return "on" if "disable" in (out or "").lower() else "off"
+
+_add("p_no_int_moderation", "Disable Interrupt Moderation",
+     "NIC delivers packets to CPU instantly instead of batching \u2014 lower ping, more CPU cost.",
+     "\U0001F4E1", "Partner Exclusive", LOCKED,
+     _int_mod_apply, _int_mod_restore, _int_mod_status, partner_only=True)
+
+
+# 5) Disable IPv6 for gaming (many games route worse via IPv6)
+_add_reg("p_ipv6_off", "Disable IPv6 for Gaming",
+     "Forces IPv4 only \u2014 fixes routing detours for games that don't handle IPv6 cleanly.",
+     "\U0001F310", "Partner Exclusive", LOCKED,
+     [{"hive": "HKLM", "path": r"SYSTEM\CurrentControlSet\Services\Tcpip6\Parameters", "name": "DisabledComponents", "on": 0xFF, "off": 0}],
+     partner_only=True)
+
+
+# 6) Kill WiFi autoconfig background scans during gameplay
+def _wifi_autoscan_apply():
+    _run('netsh wlan set autoconfig enabled=no interface=Wi-Fi')
+    return True
+
+def _wifi_autoscan_restore():
+    _run('netsh wlan set autoconfig enabled=yes interface=Wi-Fi')
+    return True
+
+def _wifi_autoscan_status():
+    ok, out = _run('netsh wlan show autoconfig interface=Wi-Fi')
+    return "on" if ("disabled" in (out or "").lower() or "no" in (out or "").lower().split("autoconfig")[-1][:20]) else "off"
+
+_add("p_wifi_no_bgscan", "Stop WiFi Background Scans",
+     "Prevents Windows from scanning for new WiFi networks mid-game \u2014 removes periodic ping spikes.",
+     "\U0001F507", "Partner Exclusive", LOCKED,
+     _wifi_autoscan_apply, _wifi_autoscan_restore, _wifi_autoscan_status, partner_only=True)
+
+
 TWEAKS = _defs
 CATEGORIES = ["CPU & Power", "Network", "GPU / DirectX", "Input", "System",
               "Gaming", "Visuals", "Startup", "Disk", "Privacy", "Audio",
